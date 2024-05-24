@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <queue>
+#include <list>
 
 using namespace std;
 
@@ -12,6 +13,13 @@ struct Tree
     int key;
     Tree* left;
     Tree* right;
+};
+
+struct Trunk
+{
+    Trunk* prev = NULL;
+    string str;
+    Trunk(Trunk* prev, string& str) : prev(prev), str(str) {}
 };
 
 Tree* getFreeTree(int value)
@@ -68,7 +76,7 @@ void insert(int currKey, Tree* root)
     }
 }
 
-Tree* readFromF()
+Tree* readFromF(list<int> treeElems)
 {
     Tree* root;
     ifstream database("C:\\Users\\mitya\\source\\repos\\BinaryTree\\DataForTree.txt");// Следует указать путь к файлу на своем устройстве!
@@ -92,16 +100,18 @@ Tree* readFromF()
             return NULL;
         }
         root = getFreeTree(startValue);
+        treeElems.push_back(startValue);
         while (getline(database, s))
         {
             value = stoi(s);
             insert(value, root);
+            treeElems.push_back(value);
         }
     }
     return root;
 }
 
-Tree* createTree(int choise)
+Tree* createTree(int choise, list<int> treeElems)
 {
     Tree* root;
     int n;
@@ -120,11 +130,13 @@ Tree* createTree(int choise)
         srand(time(NULL));
         clockStart = chrono::high_resolution_clock::now();
         startValue = rand() % (end - start + 1) + start;
+        treeElems.push_back(startValue);
         root = getFreeTree(startValue);
         for (int i = 1; i < n; i++)
         {
             int value = rand() % (end - start + 1) + start;
             insert(value, root);
+            treeElems.push_back(value);
         }
         clockEnd = chrono::high_resolution_clock::now();
         cout << "Время создания бинарного дерева: ";
@@ -147,6 +159,7 @@ Tree* createTree(int choise)
             startValue = stoi(a);
         }
         root = getFreeTree(startValue);
+        treeElems.push_back(startValue);
         n = 1;
         int value;
         while (!isEnd)
@@ -162,6 +175,7 @@ Tree* createTree(int choise)
                 value = stoi(a);
             }
             insert(value, root);
+            treeElems.push_back(value);
             n++;
         }
         clockEnd = chrono::high_resolution_clock::now();
@@ -172,7 +186,7 @@ Tree* createTree(int choise)
     case 3:
         cout << "Создание дерева по данным из файла\n";
         clockStart = chrono::high_resolution_clock::now();
-        root = readFromF();
+        root = readFromF(treeElems);
         clockEnd = chrono::high_resolution_clock::now();
         cout << "Время создания бинарного дерева: ";
         cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
@@ -184,10 +198,66 @@ Tree* createTree(int choise)
     }
 }
 
-/*void printTree(Tree* root)
+void showTrunk(Trunk* p, int nodeLvl, ofstream& f2)
 {
+    if (p == NULL)
+    {
+        return;
+    }
+    showTrunk(p->prev, nodeLvl, f2);
+    nodeLvl++;
+    f2 << p->str;
+}
 
-}*/
+void printTree(Tree* tree, Trunk* prev, bool isRight, ofstream& f2)
+{
+    if (tree == NULL)
+    {
+        return;
+    }
+    string prevStr = "    ";
+    Trunk* tmp = new Trunk(prev, prevStr);
+    printTree(tree->right, tmp, 1, f2);
+    if (!prev)
+    {
+        tmp->str = "-->";
+    }
+    else if (isRight)
+    {
+        tmp->str = ".-->";
+        prevStr = "   |";
+    }
+    else
+    {
+        tmp->str = "-->";
+        prev->str = prevStr;
+    }
+    int nodeLvl = 0;
+    showTrunk(tmp, nodeLvl, f2);
+    f2 << tree->key << "\n";
+    if (prev)
+    {
+        prev->str = prevStr;
+    }
+    tmp->str = "   |";
+    printTree(tree->left, tmp, 0, f2);
+}
+
+void printTreeToConsole(const string& fileName)
+{
+    ifstream file(fileName);
+    if (!file.is_open())
+    {
+        cout << "Ошибка открытия файла!\n";
+        return;
+    }
+    string data;
+    while (getline(file, data))
+    {
+        cout << data << '\n';
+    }
+    file.close();
+}
 
 Tree* deleteTreeElem(int currKey, Tree* root)
 {
@@ -321,13 +391,25 @@ void destroyTree(Tree* root)
 
 void menu()
 {
+    ofstream file("C:\\Users\\mitya\\source\\repos\\BinaryTree\\output.txt");
     cout << "Как Вы хотите заполнить дерево?\n1. Случайными числами\n2. Ввод всех элементов в консоль\n3. Получение элементов из файла\n0. Выход\n";
     int choise;
     cin >> choise;
-    Tree* root = createTree(choise);
+    list<int> treeElems;
+    Tree* root = createTree(choise, treeElems);
     int menuPick;
+    int consPick;
+    printTree(root, NULL, 0, file);
+    cout << "Хотите увидеть дерево в консоли?\n0. Нет\n1. Да\n";
+    cin >> consPick;
+    if (consPick)
+    {
+        file.close();
+        printTreeToConsole("C:\\Users\\mitya\\source\\repos\\BinaryTree\\output.txt");
+    }
     while (true)
     {
+        ofstream file("C:\\Users\\mitya\\source\\repos\\BinaryTree\\output.txt");
         int prevSize = 0;
         int currSize = 0;
         cout << "1. Вставка элемента в дерево\n2. Удаление элемента дерева\n3. Получение элемента дерева\n4. Прямой обход\n5. Обратный обход\n6. Обход в ширину\n0. Выход\n";
@@ -335,6 +417,7 @@ void menu()
         int currKey;
         auto clockStart = chrono::high_resolution_clock::now();
         auto clockEnd = chrono::high_resolution_clock::now();
+        bool isFind = false;
         switch (menuPick)
         {
         case 1:
@@ -345,25 +428,37 @@ void menu()
             insert(currKey, root);
             clockEnd = chrono::high_resolution_clock::now();
             currSize = sizeOfTree(root);
-            if (prevSize == currSize)
+            /*if (prevSize == currSize)
             {
                 cout << "\nЧисло не было добавлено, т.к. оно уже есть в дереве\n";
             }
             else
             {
                 cout << "\nЧисло успешно добавлено в дерево\n";
-            }
-            /*printTree(root);
-            */
+            }*/
             cout << "Время добавления элемента в бинарное дерево: ";
             cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
-            preOrderTravers(root);
+
+            clockStart = chrono::high_resolution_clock::now();
+            treeElems.push_back(currKey);
+            clockEnd = chrono::high_resolution_clock::now();
+            cout << "Время добавления элемента в двусвязный список: ";
+            cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
+            printTree(root, NULL, false, file);
+            cout << "Хотите увидеть дерево в консоли?\n0. Нет\n1. Да\n";
+            cin >> consPick;
+            if (consPick)
+            {
+                file.close();
+                printTreeToConsole("C:\\Users\\mitya\\source\\repos\\BinaryTree\\output.txt");
+            }
             break;
         case 2:
             cout << "Введите число, которое хотите удалить: ";
             cin >> currKey;
             clockStart = chrono::high_resolution_clock::now();
-            if (deleteTreeElem(currKey, root))
+            deleteTreeElem(currKey, root);
+            /*if (deleteTreeElem(currKey, root))
             {
                 clockEnd = chrono::high_resolution_clock::now();
                 cout << "\nЧисло успешно удалено\n";
@@ -372,17 +467,53 @@ void menu()
             {
                 clockEnd = chrono::high_resolution_clock::now();
                 cout << "\nЧисло не было найдено и удалено\n";
-            }
-            /*printTree(root);
-            */
+            }*/
+            clockEnd = chrono::high_resolution_clock::now();
             cout << "Время удаления элемента из бинарного дерева: ";
             cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
-            preOrderTravers(root);
+
+            clockStart = chrono::high_resolution_clock::now();
+            for (auto iter = treeElems.begin(); iter != treeElems.end(); iter++)
+            {
+                if (*iter = currKey)
+                {
+                    treeElems.erase(iter);
+                    break;
+                }
+            }
+            clockEnd = chrono::high_resolution_clock::now();
+            cout << "Время удаления элемента из двусвязного списка: ";
+            cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
+            printTree(root, NULL, 0, file);
+            cout << "Хотите увидеть дерево в консоли?\n0. Нет\n1. Да\n";
+            cin >> consPick;
+            if (consPick)
+            {
+                file.close();
+                printTreeToConsole("C:\\Users\\mitya\\source\\repos\\BinaryTree\\output.txt");
+            }
             break;
         case 3:
             cout << "Введите число, которое хотите найти: ";
             cin >> currKey;
-            if (search(currKey, root))
+            clockStart = chrono::high_resolution_clock::now();
+            isFind = search(currKey, root);
+            clockEnd = chrono::high_resolution_clock::now();
+            cout << "Время поиска элемента в бинарном дереве: ";
+            cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
+
+            clockStart = chrono::high_resolution_clock::now();
+            for (auto iter = treeElems.begin(); iter != treeElems.end(); iter++)
+            {
+                if (*iter = currKey)
+                {
+                    break;
+                }
+            }
+            clockEnd = chrono::high_resolution_clock::now();
+            cout << "Время поиска элемента в двусвязном списке: ";
+            cout << (chrono::duration_cast<chrono::microseconds>(clockEnd - clockStart).count()) << "ms\n";
+            if (isFind)
             {
                 cout << "\nЧисло найдено\n";
             }
@@ -393,12 +524,15 @@ void menu()
             break;
         case 4:
             preOrderTravers(root);
+            cout << '\n';
             break;
         case 5:
             postOrderTravers(root);
+            cout << '\n';
             break;
         case 6:
             levelOrderTravers(root);
+            cout << '\n';
             break;
         default:
             cout << "Выход из программы...\n";
