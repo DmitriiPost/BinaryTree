@@ -127,6 +127,11 @@ Tree* createTree(int choise, list<int> treeElems)
     case 1:
         cout << "Введите количество элементов бинарного дерева\n";
         cin >> n;
+        while (n <= 0)
+        {
+            cout << "Бинарное дерево с количеством элементов меньше 1 не может быть создано, попробуйте другое число\n";
+            cin >> n;
+        }
         srand(time(NULL));
         clockStart = chrono::high_resolution_clock::now();
         startValue = rand() % (end - start + 1) + start;
@@ -259,7 +264,19 @@ void printTreeToConsole(const string& fileName)
     file.close();
 }
 
-Tree* deleteTreeElem(int currKey, Tree* root)
+Tree* findMaxElem(Tree* root)
+{
+    if (root->right == NULL)
+    {
+        return root;
+    }
+    else
+    {
+        return findMaxElem(root->right);
+    }
+}
+
+Tree* deleteNode(int currKey, Tree* root)
 {
     if (root == NULL)
     {
@@ -269,46 +286,33 @@ Tree* deleteTreeElem(int currKey, Tree* root)
     {
         if (currKey == root->key)
         {
-            Tree* tmp, * ptr;
+            if ((root->left == NULL) && (root->right == NULL))
+            {
+                return NULL;
+            }
+            if (root->left == NULL)
+            {
+                return root->right;
+            }
             if (root->right == NULL)
             {
-                tmp = root->left;
+                return root->left;
             }
-            else
-            {
-                ptr = root->left;
-                if (ptr->left == NULL)
-                {
-                    ptr->left = root->left;
-                    tmp = ptr;
-                }
-                else
-                {
-                    Tree* pmin = ptr->left;
-                    while (pmin->left != NULL)
-                    {
-                        ptr = pmin;
-                        pmin = ptr->left;
-                    }
-                    ptr->left = pmin->right;
-                    pmin->left = root->left;
-                    pmin->right = root->right;
-                    tmp = pmin;
-                }
-            }
-            delete root;
-            return tmp;
+            Tree* maxElemInLeft = findMaxElem(root->left);
+            root->key = maxElemInLeft->key;
+            root->left = deleteNode(maxElemInLeft->key, root->left);
         }
+        
         else if (currKey < root->key)
         {
-            root->left = deleteTreeElem(currKey, root->left);
+            root->left = deleteNode(currKey, root->left);
         }
         else
         {
-            root->right = deleteTreeElem(currKey, root->right);
+            root->right = deleteNode(currKey, root->right);
         }
+        return root;
     }
-    return root;
 }
 
 Tree* search(int currKey, Tree* root)
@@ -457,7 +461,7 @@ void menu()
             cout << "Введите число, которое хотите удалить: ";
             cin >> currKey;
             clockStart = chrono::high_resolution_clock::now();
-            deleteTreeElem(currKey, root);
+            deleteNode(currKey, root);
             /*if (deleteTreeElem(currKey, root))
             {
                 clockEnd = chrono::high_resolution_clock::now();
@@ -537,6 +541,7 @@ void menu()
         default:
             cout << "Выход из программы...\n";
             destroyTree(root);
+            treeElems.clear();
             exit(0);
         }
     }
